@@ -29,15 +29,6 @@ struct conn_queue_item {
     CQ_ITEM          *next;
 };
 
-/* A connection queue. */
-typedef struct conn_queue CQ;
-struct conn_queue {
-    CQ_ITEM *head;
-    CQ_ITEM *tail;
-    pthread_mutex_t lock;
-    pthread_cond_t  cond;
-};
-
 /* Lock for cache operations (item_*, assoc_*) */
 pthread_mutex_t cache_lock;
 
@@ -373,12 +364,7 @@ static void setup_thread(LIBEVENT_THREAD *me) {
         exit(1);
     }
 
-    me->new_conn_queue = malloc(sizeof(struct conn_queue));
-    if (me->new_conn_queue == NULL) {
-        perror("Failed to allocate memory for connection queue");
-        exit(EXIT_FAILURE);
-    }
-    cq_init(me->new_conn_queue);
+    cq_init(&me->new_conn_queue);
 
     if (pthread_mutex_init(&me->stats.mutex, NULL) != 0) {
         perror("Failed to initialize mutex");
@@ -432,7 +418,7 @@ static void thread_libevent_process(int fd, short which, void *arg) {
 
     switch (buf[0]) {
     case 'c':
-    item = cq_pop(me->new_conn_queue);
+    item = cq_pop(&me->new_conn_queue);
 
     if (NULL != item) {
         conn *c = conn_new(item->sfd, item->init_state, item->event_flags,
@@ -490,7 +476,7 @@ void dispatch_conn_new(int sfd, enum conn_states init_state, int event_flags,
     item->read_buffer_size = read_buffer_size;
     item->transport = transport;
 
-    cq_push(thread->new_conn_queue, item);
+    cq_push(&thread->new_conn_queue, item);
 
     MEMCACHED_CONN_DISPATCH(sfd, thread->thread_id);
     buf[0] = 'c';

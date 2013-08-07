@@ -31,12 +31,14 @@ if ENABLE_SASL
 memcached_SOURCES += sasl_defs.c
 endif
 
+gc_LDADD = ${HOME}/Software/bdwgc-7.3/lib/libgc.a
+
 memcached_debug_SOURCES = $(memcached_SOURCES)
 memcached_CPPFLAGS = -DNDEBUG
-memcached_debug_LDADD = @PROFILER_LDFLAGS@
+memcached_debug_LDADD = @PROFILER_LDFLAGS@ $(gc_LDADD)
 memcached_debug_CFLAGS = @PROFILER_FLAGS@
 
-memcached_LDADD =
+memcached_LDADD = $(gc_LDADD)
 memcached_DEPENDENCIES =
 memcached_debug_DEPENDENCIES =
 CLEANFILES=
@@ -53,6 +55,8 @@ memcached_debug_LDADD += memcached_debug_dtrace.o
 memcached_debug_DEPENDENCIES += memcached_debug_dtrace.o
 CLEANFILES += memcached_dtrace.o memcached_debug_dtrace.o
 endif
+
+V=1
 
 memcached_dtrace.h: memcached_dtrace.d
 	${DTRACE} -h -s memcached_dtrace.d

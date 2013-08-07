@@ -13,6 +13,18 @@
  *      Anatoly Vorobey <mellon@pobox.com>
  *      Brad Fitzpatrick <brad@danga.com>
  */
+
+/* need this to get IOV_MAX on some platforms. */
+#ifndef __need_IOV_MAX
+#define __need_IOV_MAX
+#endif
+
+/* some POSIX systems need the following definition
+ * to get mlockall flags out of sys/mman.h.  */
+#ifndef _P1003_1B_VISIBLE
+#define _P1003_1B_VISIBLE
+#endif
+
 #include "memcached.h"
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -23,15 +35,6 @@
 #include <ctype.h>
 #include <stdarg.h>
 
-/* some POSIX systems need the following definition
- * to get mlockall flags out of sys/mman.h.  */
-#ifndef _P1003_1B_VISIBLE
-#define _P1003_1B_VISIBLE
-#endif
-/* need this to get IOV_MAX on some platforms. */
-#ifndef __need_IOV_MAX
-#define __need_IOV_MAX
-#endif
 #include <pwd.h>
 #include <sys/mman.h>
 #include <fcntl.h>
@@ -46,6 +49,9 @@
 #include <limits.h>
 #include <sysexits.h>
 #include <stddef.h>
+
+#define GC_THREADS
+#include <gc.h>
 
 /* FreeBSD 4.x doesn't have IOV_MAX exposed. */
 #ifndef IOV_MAX
@@ -284,6 +290,9 @@ static int freecurr;
 static pthread_mutex_t conn_lock = PTHREAD_MUTEX_INITIALIZER;
 
 
+/*
+ * Initialize connection management.
+ */
 static void conn_init(void) {
     freetotal = 200;
     freecurr = 0;
@@ -802,6 +811,7 @@ static void out_string(conn *c, const char *str) {
         fprintf(stderr, ">%d %s\n", c->sfd, str);
 
     /* Nuke a partial output... */
+	 /* XXX: leak? */
     c->msgcurr = 0;
     c->msgused = 0;
     c->iovused = 0;
@@ -2352,6 +2362,7 @@ enum store_item_type do_store_item(item *it, int comm, conn *c, const uint32_t h
             }
         }
 
+		  /* NREAD_SET handled here */
         if (stored == NOT_STORED) {
             if (old_it != NULL)
                 item_replace(old_it, it, hv);
@@ -4745,6 +4756,16 @@ int main (int argc, char **argv) {
         NULL
     };
 
+	 /* GC: initialize */
+	 GC_INIT();
+	 fprintf(stderr, "Parallel GC: %d\n", GC_get_parallel());
+	 fprintf(stderr, "Minor freq: %d\n", GC_get_full_freq());
+	 fprintf(stderr, "Free space divider: %ld\n", GC_get_free_space_divisor());
+	 fprintf(stderr, "Pause time bound: %ldms\n", GC_get_time_limit());
+	 fprintf(stderr, "Heap size: %ldkb\n", GC_get_heap_size() / 1024);
+	 fprintf(stderr, "Free size: %ldkb\n", GC_get_free_bytes() / 1024);
+	 GC_enable_incremental();
+	
     if (!sanitycheck()) {
         return EX_OSERR;
     }

@@ -9,6 +9,9 @@
 
 #include "cache.h"
 
+#define GC_THREADS
+#include <gc.h>
+
 #ifndef NDEBUG
 const uint64_t redzone_pattern = 0xdeadbeefcafebabe;
 int cache_error = 0;

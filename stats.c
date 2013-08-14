@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#define GC_THREADS
+#include <gc.h>
 
 /*
  * Stats are tracked on the basis of key prefixes. This is a simple
@@ -183,7 +185,7 @@ char *stats_prefix_dump(int *length) {
            num_prefixes * (strlen(format) - 2 /* %s */
                            + 4 * (20 - 4)) /* %llu replaced by 20-digit num */
                            + sizeof("END\r\n");
-    buf = malloc(size);
+    buf = GC_MALLOC(size);
     if (NULL == buf) {
         perror("Can't allocate stats response: malloc");
         STATS_UNLOCK();

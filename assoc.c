@@ -25,6 +25,9 @@
 #include <assert.h>
 #include <pthread.h>
 
+#define GC_THREADS
+#include <gc.h>
+
 static pthread_cond_t maintenance_cond = PTHREAD_COND_INITIALIZER;
 
 

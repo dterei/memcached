@@ -12,6 +12,8 @@
 #include <string.h>
 #include <time.h>
 #include <assert.h>
+#define GC_THREADS
+#include <gc.h>
 
 /* Forward Declarations */
 static void item_link_q(item *it);
@@ -388,7 +390,7 @@ char *do_item_cachedump(const unsigned int slabs_clsid, const unsigned int limit
 
     it = heads[slabs_clsid];
 
-    buffer = malloc((size_t)memlimit);
+    buffer = GC_MALLOC((size_t)memlimit);
     if (buffer == 0) return NULL;
     bufcurr = 0;
 

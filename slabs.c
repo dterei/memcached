@@ -20,6 +20,8 @@
 #include <string.h>
 #include <assert.h>
 #include <pthread.h>
+#define GC_THREADS
+#include <gc.h>
 
 /* powers-of-N allocation structures */
 

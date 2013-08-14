@@ -52,6 +52,7 @@
 
 #define GC_THREADS
 #include <gc.h>
+#define GC_CALLOC(m,n) GC_MALLOC(m * n)
 
 /* FreeBSD 4.x doesn't have IOV_MAX exposed. */
 #ifndef IOV_MAX
@@ -296,7 +297,7 @@ static pthread_mutex_t conn_lock = PTHREAD_MUTEX_INITIALIZER;
 static void conn_init(void) {
     freetotal = 200;
     freecurr = 0;
-    if ((freeconns = calloc(freetotal, sizeof(conn *))) == NULL) {
+    if ((freeconns = GC_CALLOC(freetotal, sizeof(conn *))) == NULL) {
         fprintf(stderr, "Failed to allocate connection structures\n");
     }
     return;
@@ -331,7 +332,7 @@ bool conn_add_to_freelist(conn *c) {
     } else {
         /* try to enlarge free connections array */
         size_t newsize = freetotal * 2;
-        conn **new_freeconns = realloc(freeconns, sizeof(conn *) * newsize);
+        conn **new_freeconns = GC_REALLOC(freeconns, sizeof(conn *) * newsize);
         if (new_freeconns) {
             freetotal = newsize;
             freeconns = new_freeconns;
@@ -366,7 +367,7 @@ conn *conn_new(const int sfd, enum conn_states init_state,
     conn *c = conn_from_freelist();
 
     if (NULL == c) {
-        if (!(c = (conn *)calloc(1, sizeof(conn)))) {
+        if (!(c = (conn *)GC_CALLOC(1, sizeof(conn)))) {
             fprintf(stderr, "calloc()\n");
             return NULL;
         }
@@ -538,7 +539,7 @@ void conn_free(conn *c) {
             free(c->suffixlist);
         if (c->iov)
             free(c->iov);
-        free(c);
+        /* free(c); */
     }
 }
 

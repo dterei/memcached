@@ -10,6 +10,8 @@
  *
  */
 #include "memcached.h"
+#define GC_THREADS
+#include <gc.h>
 
 /*
  * Since the hash function does bit manipulation, it needs to know

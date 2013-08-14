@@ -12,6 +12,8 @@
 #include <string.h>
 #include <time.h>
 #include <assert.h>
+#define GC_THREADS
+#include <gc.h>
 
 /* Forward Declarations */
 static void item_link_q(item *it);

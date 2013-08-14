@@ -466,6 +466,9 @@ struct conn {
     int keylen;
     conn   *next;     /* Used for generating a list of conn structures */
     LIBEVENT_THREAD *thread; /* Pointer to the thread object serving this connection */
+
+	 conn *gc_next; /* A linked list to keep connections on for the GC to know about */
+	 conn *gc_prev;
 };
 
 

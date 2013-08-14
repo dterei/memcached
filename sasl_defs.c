@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sasl/saslplug.h>
+#define GC_THREADS
+#include <gc.h>
 
 char my_sasl_hostname[1025];
 

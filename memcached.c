@@ -290,6 +290,9 @@ static int freecurr;
 /* Lock for connection freelist */
 static pthread_mutex_t conn_lock = PTHREAD_MUTEX_INITIALIZER;
 
+/* List for the GC to trace. */
+static conn *gc_conns;
+
 
 /*
  * Initialize connection management.
@@ -300,6 +303,7 @@ static void conn_init(void) {
     if ((freeconns = GC_CALLOC(freetotal, sizeof(conn *))) == NULL) {
         fprintf(stderr, "Failed to allocate connection structures\n");
     }
+    gc_conns = NULL;
     return;
 }
 
@@ -324,24 +328,31 @@ conn *conn_from_freelist() {
  * Adds a connection to the freelist. 0 = success.
  */
 bool conn_add_to_freelist(conn *c) {
-    bool ret = true;
-    pthread_mutex_lock(&conn_lock);
-    if (freecurr < freetotal) {
-        freeconns[freecurr++] = c;
-        ret = false;
-    } else {
-        /* try to enlarge free connections array */
-        size_t newsize = freetotal * 2;
-        conn **new_freeconns = GC_REALLOC(freeconns, sizeof(conn *) * newsize);
-        if (new_freeconns) {
-            freetotal = newsize;
-            freeconns = new_freeconns;
-            freeconns[freecurr++] = c;
-            ret = false;
-        }
+    if (c) {
+        if (c->gc_next) c->gc_next->gc_prev = c->gc_prev;
+        if (c->gc_prev) c->gc_prev->gc_next = c->gc_next;
+        c->gc_next = c->gc_prev = NULL;
     }
-    pthread_mutex_unlock(&conn_lock);
-    return ret;
+    return true;
+
+    /* bool ret = true; */
+    /* pthread_mutex_lock(&conn_lock); */
+    /* if (freecurr < freetotal) { */
+    /*     freeconns[freecurr++] = c; */
+    /*     ret = false; */
+    /* } else { */
+    /*     #<{(| try to enlarge free connections array |)}># */
+    /*     size_t newsize = freetotal * 2; */
+    /*     conn **new_freeconns = GC_REALLOC(freeconns, sizeof(conn *) * newsize); */
+    /*     if (new_freeconns) { */
+    /*         freetotal = newsize; */
+    /*         freeconns = new_freeconns; */
+    /*         freeconns[freecurr++] = c; */
+    /*         ret = false; */
+    /*     } */
+    /* } */
+    /* pthread_mutex_unlock(&conn_lock); */
+    /* return ret; */
 }
 
 static const char *prot_text(enum protocol prot) {
@@ -364,7 +375,8 @@ conn *conn_new(const int sfd, enum conn_states init_state,
                 const int event_flags,
                 const int read_buffer_size, enum network_transport transport,
                 struct event_base *base) {
-    conn *c = conn_from_freelist();
+    /* conn *c = conn_from_freelist(); */
+	 conn *c = NULL;
 
     if (NULL == c) {
         if (!(c = (conn *)GC_CALLOC(1, sizeof(conn)))) {
@@ -388,7 +400,7 @@ conn *conn_new(const int sfd, enum conn_states init_state,
         c->msgsize = MSG_LIST_INITIAL;
         c->hdrsize = 0;
 
-        c->rbuf = (char *)malloc((size_t)c->rsize);
+        c->rbuf = (char *)GC_MALLOC((size_t)c->rsize);
         c->wbuf = (char *)malloc((size_t)c->wsize);
         c->ilist = (item **)malloc(sizeof(item *) * c->isize);
         c->suffixlist = (char **)malloc(sizeof(char *) * c->suffixsize);
@@ -405,6 +417,11 @@ conn *conn_new(const int sfd, enum conn_states init_state,
         STATS_LOCK();
         stats.conn_structs++;
         STATS_UNLOCK();
+
+        c->gc_prev = NULL;
+        c->gc_next = gc_conns;
+        if (gc_conns) gc_conns->gc_prev = c;
+        gc_conns = c;
     }
 
     c->transport = transport;
@@ -529,8 +546,8 @@ void conn_free(conn *c) {
             free(c->hdrbuf);
         if (c->msglist)
             free(c->msglist);
-        if (c->rbuf)
-            free(c->rbuf);
+        /* if (c->rbuf) */
+        /*     free(c->rbuf); */
         if (c->wbuf)
             free(c->wbuf);
         if (c->ilist)
@@ -591,7 +608,7 @@ static void conn_shrink(conn *c) {
         if (c->rcurr != c->rbuf)
             memmove(c->rbuf, c->rcurr, (size_t)c->rbytes);
 
-        newbuf = (char *)realloc((void *)c->rbuf, DATA_BUFFER_SIZE);
+        newbuf = (char *)GC_REALLOC((void *)c->rbuf, DATA_BUFFER_SIZE);
 
         if (newbuf) {
             c->rbuf = newbuf;
@@ -1570,7 +1587,7 @@ static void bin_read_key(conn *c, enum bin_substates next_substate, int extra) {
                 fprintf(stderr, "%d: Need to grow buffer from %lu to %lu\n",
                         c->sfd, (unsigned long)c->rsize, (unsigned long)nsize);
             }
-            char *newm = realloc(c->rbuf, nsize);
+            char *newm = GC_REALLOC(c->rbuf, nsize);
             if (newm == NULL) {
                 if (settings.verbose) {
                     fprintf(stderr, "%d: Failed to grow buffer.. closing connection\n",
@@ -3602,7 +3619,7 @@ static enum try_read_result try_read_network(conn *c) {
                 return gotdata;
             }
             ++num_allocs;
-            char *new_rbuf = realloc(c->rbuf, c->rsize * 2);
+            char *new_rbuf = GC_REALLOC(c->rbuf, c->rsize * 2);
             if (!new_rbuf) {
                 if (settings.verbose > 0)
                     fprintf(stderr, "Couldn't realloc input buffer\n");

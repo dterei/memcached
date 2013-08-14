@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#define GC_THREADS
+#include <gc.h>
 
 /*
  * Stats are tracked on the basis of key prefixes. This is a simple

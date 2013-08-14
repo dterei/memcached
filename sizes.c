@@ -1,6 +1,8 @@
 #include <stdio.h>
 
 #include "memcached.h"
+#define GC_THREADS
+#include <gc.h>
 
 static void display(const char *name, size_t size) {
     printf("%s\t%d\n", name, (int)size);

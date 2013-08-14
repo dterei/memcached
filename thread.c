@@ -16,6 +16,9 @@
 #include <atomic.h>
 #endif
 
+#define GC_THREADS
+#include <gc.h>
+
 #define ITEMS_PER_ALLOC 64
 
 /* An item in the connection queue. */

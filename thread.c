@@ -18,6 +18,7 @@
 
 #define GC_THREADS
 #include <gc.h>
+#define GC_CALLOC(m,n) GC_MALLOC(m * n)
 
 #define ITEMS_PER_ALLOC 64
 
@@ -257,7 +258,7 @@ static CQ_ITEM *cqi_new(void) {
         int i;
 
         /* Allocate a bunch of items at once to reduce fragmentation */
-        item = malloc(sizeof(CQ_ITEM) * ITEMS_PER_ALLOC);
+        item = GC_MALLOC(sizeof(CQ_ITEM) * ITEMS_PER_ALLOC);
         if (NULL == item)
             return NULL;
 
@@ -816,7 +817,7 @@ void thread_init(int nthreads, struct event_base *main_base) {
 
     item_lock_count = hashsize(power);
 
-    item_locks = calloc(item_lock_count, sizeof(pthread_mutex_t));
+    item_locks = GC_CALLOC(item_lock_count, sizeof(pthread_mutex_t));
     if (! item_locks) {
         perror("Can't allocate item locks");
         exit(1);
@@ -827,7 +828,7 @@ void thread_init(int nthreads, struct event_base *main_base) {
     pthread_key_create(&item_lock_type_key, NULL);
     pthread_mutex_init(&item_global_lock, NULL);
 
-    threads = calloc(nthreads, sizeof(LIBEVENT_THREAD));
+    threads = GC_CALLOC(nthreads, sizeof(LIBEVENT_THREAD));
     if (! threads) {
         perror("Can't allocate thread descriptors");
         exit(1);

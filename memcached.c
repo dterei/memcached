@@ -248,7 +248,7 @@ static int add_msghdr(conn *c)
     assert(c != NULL);
 
     if (c->msgsize == c->msgused) {
-        msg = realloc(c->msglist, c->msgsize * 2 * sizeof(struct msghdr));
+        msg = GC_REALLOC(c->msglist, c->msgsize * 2 * sizeof(struct msghdr));
         if (! msg)
             return -1;
         c->msglist = msg;
@@ -401,11 +401,11 @@ conn *conn_new(const int sfd, enum conn_states init_state,
         c->hdrsize = 0;
 
         c->rbuf = (char *)GC_MALLOC((size_t)c->rsize);
-        c->wbuf = (char *)malloc((size_t)c->wsize);
-        c->ilist = (item **)malloc(sizeof(item *) * c->isize);
-        c->suffixlist = (char **)malloc(sizeof(char *) * c->suffixsize);
-        c->iov = (struct iovec *)malloc(sizeof(struct iovec) * c->iovsize);
-        c->msglist = (struct msghdr *)malloc(sizeof(struct msghdr) * c->msgsize);
+        c->wbuf = (char *)GC_MALLOC((size_t)c->wsize);
+        c->ilist = (item **)GC_MALLOC(sizeof(item *) * c->isize);
+        c->suffixlist = (char **)GC_MALLOC(sizeof(char *) * c->suffixsize);
+        c->iov = (struct iovec *)GC_MALLOC(sizeof(struct iovec) * c->iovsize);
+        c->msglist = (struct msghdr *)GC_MALLOC(sizeof(struct msghdr) * c->msgsize);
 
         if (c->rbuf == 0 || c->wbuf == 0 || c->ilist == 0 || c->iov == 0 ||
                 c->msglist == 0 || c->suffixlist == 0) {
@@ -521,7 +521,7 @@ static void conn_cleanup(conn *c) {
     }
 
     if (c->write_and_free) {
-        free(c->write_and_free);
+        /* free(c->write_and_free); */
         c->write_and_free = 0;
     }
 
@@ -542,20 +542,20 @@ static void conn_cleanup(conn *c) {
 void conn_free(conn *c) {
     if (c) {
         MEMCACHED_CONN_DESTROY(c);
-        if (c->hdrbuf)
-            free(c->hdrbuf);
-        if (c->msglist)
-            free(c->msglist);
+        /* if (c->hdrbuf) */
+        /*     free(c->hdrbuf); */
+        /* if (c->msglist) */
+        /*     free(c->msglist); */
         /* if (c->rbuf) */
         /*     free(c->rbuf); */
-        if (c->wbuf)
-            free(c->wbuf);
-        if (c->ilist)
-            free(c->ilist);
-        if (c->suffixlist)
-            free(c->suffixlist);
-        if (c->iov)
-            free(c->iov);
+        /* if (c->wbuf) */
+        /*     free(c->wbuf); */
+        /* if (c->ilist) */
+        /*     free(c->ilist); */
+        /* if (c->suffixlist) */
+        /*     free(c->suffixlist); */
+        /* if (c->iov) */
+        /*     free(c->iov); */
         /* free(c); */
     }
 }
@@ -619,7 +619,7 @@ static void conn_shrink(conn *c) {
     }
 
     if (c->isize > ITEM_LIST_HIGHWAT) {
-        item **newbuf = (item**) realloc((void *)c->ilist, ITEM_LIST_INITIAL * sizeof(c->ilist[0]));
+        item **newbuf = (item**) GC_REALLOC((void *)c->ilist, ITEM_LIST_INITIAL * sizeof(c->ilist[0]));
         if (newbuf) {
             c->ilist = newbuf;
             c->isize = ITEM_LIST_INITIAL;
@@ -628,7 +628,7 @@ static void conn_shrink(conn *c) {
     }
 
     if (c->msgsize > MSG_LIST_HIGHWAT) {
-        struct msghdr *newbuf = (struct msghdr *) realloc((void *)c->msglist, MSG_LIST_INITIAL * sizeof(c->msglist[0]));
+        struct msghdr *newbuf = (struct msghdr *) GC_REALLOC((void *)c->msglist, MSG_LIST_INITIAL * sizeof(c->msglist[0]));
         if (newbuf) {
             c->msglist = newbuf;
             c->msgsize = MSG_LIST_INITIAL;
@@ -637,7 +637,7 @@ static void conn_shrink(conn *c) {
     }
 
     if (c->iovsize > IOV_LIST_HIGHWAT) {
-        struct iovec *newbuf = (struct iovec *) realloc((void *)c->iov, IOV_LIST_INITIAL * sizeof(c->iov[0]));
+        struct iovec *newbuf = (struct iovec *) GC_REALLOC((void *)c->iov, IOV_LIST_INITIAL * sizeof(c->iov[0]));
         if (newbuf) {
             c->iov = newbuf;
             c->iovsize = IOV_LIST_INITIAL;
@@ -697,7 +697,7 @@ static int ensure_iov_space(conn *c) {
 
     if (c->iovused >= c->iovsize) {
         int i, iovnum;
-        struct iovec *new_iov = (struct iovec *)realloc(c->iov,
+        struct iovec *new_iov = (struct iovec *)GC_REALLOC(c->iov,
                                 (c->iovsize * 2) * sizeof(struct iovec));
         if (! new_iov)
             return -1;
@@ -784,9 +784,9 @@ static int build_udp_headers(conn *c) {
     if (c->msgused > c->hdrsize) {
         void *new_hdrbuf;
         if (c->hdrbuf)
-            new_hdrbuf = realloc(c->hdrbuf, c->msgused * 2 * UDP_HEADER_SIZE);
+            new_hdrbuf = GC_REALLOC(c->hdrbuf, c->msgused * 2 * UDP_HEADER_SIZE);
         else
-            new_hdrbuf = malloc(c->msgused * 2 * UDP_HEADER_SIZE);
+            new_hdrbuf = GC_MALLOC(c->msgused * 2 * UDP_HEADER_SIZE);
         if (! new_hdrbuf)
             return -1;
         c->hdrbuf = (unsigned char *)new_hdrbuf;
@@ -1461,7 +1461,7 @@ static bool grow_stats_buf(conn *c, size_t needed) {
     }
 
     if (nsize != c->stats.size) {
-        char *ptr = realloc(c->stats.buffer, nsize);
+        char *ptr = GC_REALLOC(c->stats.buffer, nsize);
         if (ptr) {
             c->stats.buffer = ptr;
             c->stats.size = nsize;
@@ -1532,7 +1532,7 @@ static void process_bin_stat(conn *c) {
                 return ;
             } else {
                 append_stats("detailed", strlen("detailed"), dump_buf, len, c);
-                free(dump_buf);
+                /* free(dump_buf); */
             }
         } else if (strncmp(subcmd_pos, " on", 3) == 0) {
             settings.detail_enabled = 1;
@@ -2759,7 +2759,7 @@ static inline void process_get_command(conn *c, token_t *tokens, size_t ntokens,
             }
             if (it) {
                 if (i >= c->isize) {
-                    item **new_list = realloc(c->ilist, sizeof(item *) * c->isize * 2);
+                    item **new_list = GC_REALLOC(c->ilist, sizeof(item *) * c->isize * 2);
                     if (new_list) {
                         c->isize *= 2;
                         c->ilist = new_list;
@@ -2783,7 +2783,7 @@ static inline void process_get_command(conn *c, token_t *tokens, size_t ntokens,
                                         it->nbytes, ITEM_get_cas(it));
                   /* Goofy mid-flight realloc. */
                   if (i >= c->suffixsize) {
-                    char **new_suffix_list = realloc(c->suffixlist,
+                    char **new_suffix_list = GC_REALLOC(c->suffixlist,
                                            sizeof(char *) * c->suffixsize * 2);
                     if (new_suffix_list) {
                         c->suffixsize *= 2;
@@ -4048,7 +4048,7 @@ static void drive_machine(conn *c) {
                     }
                 } else if (c->state == conn_write) {
                     if (c->write_and_free) {
-                        free(c->write_and_free);
+                        /* free(c->write_and_free); */
                         c->write_and_free = 0;
                     }
                     conn_set_state(c, c->write_and_go);

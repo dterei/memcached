@@ -12,7 +12,7 @@ AC_PROG_CC
 
 dnl **********************************************************************
 dnl ENABLE GC
-CFLAGS="$CFLAGS -I/home/davidt/Software/bdwgc-7.3/include/"
+CFLAGS="$CFLAGS -I$HOME/Software/bdwgc-7.3/include/"
 dnl **********************************************************************
 
 

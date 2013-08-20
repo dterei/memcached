@@ -31,7 +31,7 @@ if ENABLE_SASL
 memcached_SOURCES += sasl_defs.c
 endif
 
-gc_LDADD = /home/davidt/Software/bdwgc-7.3/lib/libgc.a
+gc_LDADD = ${HOME}/Software/bdwgc-7.3/lib/libgc.a
 
 memcached_debug_SOURCES = $(memcached_SOURCES)
 memcached_CPPFLAGS = -DNDEBUG

@@ -376,7 +376,7 @@ conn *conn_new(const int sfd, enum conn_states init_state,
                 const int read_buffer_size, enum network_transport transport,
                 struct event_base *base) {
     /* conn *c = conn_from_freelist(); */
-	 conn *c = NULL;
+     conn *c = NULL;
 
     if (NULL == c) {
         if (!(c = (conn *)GC_CALLOC(1, sizeof(conn)))) {
@@ -829,7 +829,7 @@ static void out_string(conn *c, const char *str) {
         fprintf(stderr, ">%d %s\n", c->sfd, str);
 
     /* Nuke a partial output... */
-	 /* XXX: leak? */
+     /* XXX: leak? */
     c->msgcurr = 0;
     c->msgused = 0;
     c->iovused = 0;
@@ -2380,7 +2380,7 @@ enum store_item_type do_store_item(item *it, int comm, conn *c, const uint32_t h
             }
         }
 
-		  /* NREAD_SET handled here */
+          /* NREAD_SET handled here */
         if (stored == NOT_STORED) {
             if (old_it != NULL)
                 item_replace(old_it, it, hv);
@@ -4774,16 +4774,19 @@ int main (int argc, char **argv) {
         NULL
     };
 
-	 /* GC: initialize */
-	 GC_INIT();
-	 fprintf(stderr, "Parallel GC: %d\n", GC_get_parallel());
-	 fprintf(stderr, "Minor freq: %d\n", GC_get_full_freq());
-	 fprintf(stderr, "Free space divider: %ld\n", GC_get_free_space_divisor());
-	 fprintf(stderr, "Pause time bound: %ldms\n", GC_get_time_limit());
-	 fprintf(stderr, "Heap size: %ldkb\n", GC_get_heap_size() / 1024);
-	 fprintf(stderr, "Free size: %ldkb\n", GC_get_free_bytes() / 1024);
-	 GC_enable_incremental();
-	
+     /* GC: initialize */
+     GC_INIT();
+    unsigned int v = GC_get_version();
+    fprintf(stderr, "GC Version: %d.%d.%d\n",
+        (char) (v >> 16), (char) (v >> 8), (char) v);
+     fprintf(stderr, "Parallel GC: %d\n", GC_get_parallel());
+     fprintf(stderr, "Minor freq: %d\n", GC_get_full_freq());
+     fprintf(stderr, "Free space divider: %ld\n", GC_get_free_space_divisor());
+     fprintf(stderr, "Pause time bound: %ldms\n", GC_get_time_limit());
+     fprintf(stderr, "Heap size: %ldkb\n", GC_get_heap_size() / 1024);
+     fprintf(stderr, "Free size: %ldkb\n", GC_get_free_bytes() / 1024);
+     /* GC_enable_incremental(); */
+    
     if (!sanitycheck()) {
         return EX_OSERR;
     }

@@ -1,1 +1,1 @@
-memcached: ./memcached -t 4
+memcached: ./memcached -t 4 -v

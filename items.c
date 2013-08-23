@@ -14,6 +14,7 @@
 #include <assert.h>
 #define GC_THREADS
 #include <gc.h>
+#define GC_CALLOC(m,n) GC_MALLOC(m * n)
 
 /* Forward Declarations */
 static void item_link_q(item *it);
@@ -489,7 +490,7 @@ void do_item_stats_sizes(ADD_STAT add_stats, void *c) {
 
     /* max 1MB object, divided into 32 bytes size buckets */
     const int num_buckets = 32768;
-    unsigned int *histogram = calloc(num_buckets, sizeof(int));
+    unsigned int *histogram = GC_CALLOC(num_buckets, sizeof(int));
 
     if (histogram != NULL) {
         int i;
@@ -514,7 +515,7 @@ void do_item_stats_sizes(ADD_STAT add_stats, void *c) {
                 APPEND_STAT(key, "%u", histogram[i]);
             }
         }
-        free(histogram);
+        //free(histogram);
     }
     add_stats(NULL, 0, NULL, 0, c);
 }

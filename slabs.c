@@ -102,7 +102,7 @@ void slabs_init(const size_t limit, const double factor, const bool prealloc) {
 
     if (prealloc) {
         /* Allocate everything in a big chunk with malloc */
-        mem_base = malloc(mem_limit);
+        mem_base = GC_MALLOC(mem_limit);
         if (mem_base != NULL) {
             mem_current = mem_base;
             mem_avail = mem_limit;
@@ -375,7 +375,7 @@ static void *memory_allocate(size_t size) {
 
     if (mem_base == NULL) {
         /* We are not using a preallocated large memory chunk */
-        ret = malloc(size);
+        ret = GC_MALLOC(size);
         if (settings.verbose > 0) {
            fprintf(stderr, "allocate slab! [total: %ld]\n",
                mem_malloced + size);

@@ -27,6 +27,7 @@
 
 #define GC_THREADS
 #include <gc.h>
+#define GC_CALLOC(m,n) GC_MALLOC(m * n)
 
 static pthread_cond_t maintenance_cond = PTHREAD_COND_INITIALIZER;
 
@@ -66,7 +67,7 @@ void assoc_init(const int hashtable_init) {
     if (hashtable_init) {
         hashpower = hashtable_init;
     }
-    primary_hashtable = calloc(hashsize(hashpower), sizeof(void *));
+    primary_hashtable = GC_CALLOC(hashsize(hashpower), sizeof(void *));
     if (! primary_hashtable) {
         fprintf(stderr, "Failed to init hashtable.\n");
         exit(EXIT_FAILURE);
@@ -128,7 +129,7 @@ static item** _hashitem_before (const char *key, const size_t nkey, const uint32
 static void assoc_expand(void) {
     old_hashtable = primary_hashtable;
 
-    primary_hashtable = calloc(hashsize(hashpower + 1), sizeof(void *));
+    primary_hashtable = GC_CALLOC(hashsize(hashpower + 1), sizeof(void *));
     if (primary_hashtable) {
         if (settings.verbose > 1)
             fprintf(stderr, "Hash table expansion starting\n");
@@ -231,7 +232,7 @@ static void *assoc_maintenance_thread(void *arg) {
             expand_bucket++;
             if (expand_bucket == hashsize(hashpower - 1)) {
                 expanding = false;
-                free(old_hashtable);
+                // free(old_hashtable);
                 STATS_LOCK();
                 stats.hash_bytes -= hashsize(hashpower - 1) * sizeof(void *);
                 stats.hash_is_expanding = 0;

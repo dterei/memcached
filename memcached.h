@@ -303,16 +303,18 @@ struct settings {
     int backlog;
     int item_size_max;        /* Maximum item size, and upper end for slabs */
     bool sasl;              /* SASL on/off */
-	 bool sasl_fake;         /* SASL auth where we accept any user */
+    bool sasl_fake;         /* SASL auth where we accept any user */
     bool maxconns_fast;     /* Whether or not to early close connections */
     bool slab_reassign;     /* Whether or not slab reassignment is allowed */
     int slab_automove;     /* Whether or not to automatically move slabs */
     int hashpower_init;     /* Starting hash power level */
     bool shutdown_command; /* allow shutdown command */
     long long unsigned test_data_size;
-	 long long unsigned test_data_amount;
-	 bool load_test_data;
+    long long unsigned test_data_amount;
+    bool load_test_data;
     bool thread_affinity;
+    int gc_frequency;      /* how often the GC should run? */ 
+    int gc_major_ratio;    /* How many minor collections to major? */
 };
 
 extern struct stats stats;
@@ -471,8 +473,8 @@ struct conn {
     conn   *next;     /* Used for generating a list of conn structures */
     LIBEVENT_THREAD *thread; /* Pointer to the thread object serving this connection */
 
-	 conn *gc_next; /* A linked list to keep connections on for the GC to know about */
-	 conn *gc_prev;
+    conn *gc_next; /* A linked list to keep connections on for the GC to know about */
+    conn *gc_prev;
 };
 
 

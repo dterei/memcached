@@ -49,6 +49,7 @@
 #include <limits.h>
 #include <sysexits.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 #define GC_THREADS
 #include <gc.h>
@@ -101,6 +102,8 @@ static int ensure_iov_space(conn *c);
 static int add_iov(conn *c, const void *buf, int len);
 static int add_msghdr(conn *c);
 
+/* GC invoke loop */
+static void time_loop(const int fd, const short which, void *arg);
 
 static void conn_free(conn *c);
 
@@ -234,6 +237,7 @@ static void settings_init(void) {
     settings.slab_automove = 0;
     settings.shutdown_command = false;
     settings.thread_affinity = false;
+    settings.gc_frequency = 0;
 }
 
 /*
@@ -400,12 +404,12 @@ conn *conn_new(const int sfd, enum conn_states init_state,
         c->msgsize = MSG_LIST_INITIAL;
         c->hdrsize = 0;
 
-        c->rbuf = (char *)GC_MALLOC((size_t)c->rsize);
-        c->wbuf = (char *)GC_MALLOC((size_t)c->wsize);
-        c->ilist = (item **)GC_MALLOC(sizeof(item *) * c->isize);
+        c->rbuf = (char *)GC_MALLOC_ATOMIC((size_t)c->rsize);
+        c->wbuf = (char *)GC_MALLOC_ATOMIC((size_t)c->wsize);
+        c->ilist = (item **)GC_MALLOC_ATOMIC(sizeof(item *) * c->isize);
         c->suffixlist = (char **)GC_MALLOC(sizeof(char *) * c->suffixsize);
-        c->iov = (struct iovec *)GC_MALLOC(sizeof(struct iovec) * c->iovsize);
-        c->msglist = (struct msghdr *)GC_MALLOC(sizeof(struct msghdr) * c->msgsize);
+        c->iov = (struct iovec *)GC_MALLOC_ATOMIC(sizeof(struct iovec) * c->iovsize);
+        c->msglist = (struct msghdr *)GC_MALLOC_ATOMIC(sizeof(struct msghdr) * c->msgsize);
 
         if (c->rbuf == 0 || c->wbuf == 0 || c->ilist == 0 || c->iov == 0 ||
                 c->msglist == 0 || c->suffixlist == 0) {
@@ -4559,6 +4563,8 @@ static void usage(void) {
     printf("-B            Binding protocol - one of ascii, binary, or auto (default)\n");
     printf("-I            Override the size of each slab page. Adjusts max item size\n"
            "              (default: 1mb, min: 1k, max: 128m)\n");
+    printf("-g <num>      Frequency at which the GC should run (ms, default: 0\n");
+    printf("-G <num>      Ratio of minor to major collections (default: 6)\n");
     printf("-Z <num>      Load <num> dummy items into the cache at startup.\n");
     printf("-X <num>      Dummy items should be of size <num>. Only applicable if\n"
            "              `-Z` used.\n");
@@ -4744,6 +4750,34 @@ static int enable_large_pages(void) {
 #endif
 }
 
+/* Regular loop to invoke GC */
+static void time_loop(const int fd, const short which, void *arg) {
+   if (settings.gc_frequency <= 0) return;
+
+   int secs = settings.gc_frequency / 1000;
+   int usec = settings.gc_frequency % 1000 * 1000;
+   struct timeval t = {.tv_sec = secs, .tv_usec = usec};
+   static struct event clockevent;
+   static bool initialized = false;
+   static int count = 0;
+
+   if (initialized) {
+      evtimer_del(&clockevent);
+   } else {
+      initialized = true;
+   }
+
+   evtimer_set(&clockevent, time_loop, 0);
+   event_base_set(main_base, &clockevent);
+   evtimer_add(&clockevent, &t);
+
+   if (++count % settings.gc_major_ratio == 0) {
+      GC_gcollect();
+   } else {
+      while (GC_collect_a_little()) {}
+   }
+}
+
 /**
  * Do basic sanity check of the runtime environment
  * @return true if no errors found, false if we can't use this env
@@ -4804,18 +4838,20 @@ int main (int argc, char **argv) {
         NULL
     };
 
-     /* GC: initialize */
-     GC_INIT();
+    /* GC: initialize */
+    GC_INIT();
+    fprintf(stderr, "GC Enabled: %d\n", !GC_is_disabled());
     unsigned int v = GC_get_version();
     fprintf(stderr, "GC Version: %d.%d.%d\n",
         (char) (v >> 16), (char) (v >> 8), (char) v);
-     fprintf(stderr, "Parallel GC: %d\n", GC_get_parallel());
-     fprintf(stderr, "Minor freq: %d\n", GC_get_full_freq());
-     fprintf(stderr, "Free space divider: %ld\n", GC_get_free_space_divisor());
-     fprintf(stderr, "Pause time bound: %ldms\n", GC_get_time_limit());
-     fprintf(stderr, "Heap size: %ldkb\n", GC_get_heap_size() / 1024);
-     fprintf(stderr, "Free size: %ldkb\n", GC_get_free_bytes() / 1024);
-     /* GC_enable_incremental(); */
+    fprintf(stderr, "Parallel GC: %d\n", GC_get_parallel());
+    fprintf(stderr, "Minor freq: %d\n", GC_get_full_freq());
+    fprintf(stderr, "Free space divider: %ld\n", GC_get_free_space_divisor());
+    fprintf(stderr, "Pause time bound: %ldms\n", GC_get_time_limit());
+    fprintf(stderr, "Heap size: %ldkb\n", GC_get_heap_size() / 1024);
+    fprintf(stderr, "Free size: %ldkb\n", GC_get_free_bytes() / 1024);
+    fprintf(stderr, "Incremental needs: %d\n", GC_incremental_protection_needs());
+    /* GC_enable_incremental(); */
     
     if (!sanitycheck()) {
         return EX_OSERR;
@@ -4864,8 +4900,18 @@ int main (int argc, char **argv) {
           "o:"  /* Extended generic options */
           "X:"  /* Item size to load for testing */
           "Z:"  /* Total number of items to load for testing */
+          "g:"  /* How often the GC should run */
+          "G:"  /* Ratio of minor to major GC collections */
         ))) {
         switch (c) {
+        case 'g':
+            settings.gc_frequency = atoi(optarg);
+            break;
+
+        case 'G':
+            settings.gc_major_ratio = atoi(optarg);
+            break;
+
         case 'X':
             settings.test_data_size = atoll(optarg);
             break;
@@ -5355,6 +5401,9 @@ int main (int argc, char **argv) {
             fprintf(stderr, "finished!\n");
         }
     }
+
+   // start our timer loop.
+   time_loop(0, 0, NULL);
 
     /* enter the event loop */
     if (event_base_loop(main_base, 0) != 0) {

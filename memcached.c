@@ -4768,6 +4768,23 @@ static bool sanitycheck(void) {
     return true;
 }
 
+// GCC
+static void GC_CALLBACK warn_proc(char *msg, GC_word p)
+{
+  // fprintf(stderr, msg, (unsigned long)p);
+}
+
+// Invoke GC when around 85% full.
+static int GC_CALLBACK gc_stop(void)
+{
+  size_t total = GC_get_heap_size();
+  size_t free = GC_get_free_bytes();
+  if (free < (total / 7)) {
+    return 0;
+  }
+  return 1;
+}
+
 int main (int argc, char **argv) {
     int c;
     bool lock_memory = false;
@@ -4807,6 +4824,7 @@ int main (int argc, char **argv) {
     };
 
     /* GC: initialize */
+    GC_set_all_interior_pointers(0);
     GC_INIT();
     fprintf(stderr, "GC Enabled: %d\n", !GC_is_disabled());
     unsigned int v = GC_get_version();
@@ -4819,7 +4837,8 @@ int main (int argc, char **argv) {
     fprintf(stderr, "Heap size: %ldkb\n", GC_get_heap_size() / 1024);
     fprintf(stderr, "Free size: %ldkb\n", GC_get_free_bytes() / 1024);
     fprintf(stderr, "Incremental needs: %d\n", GC_incremental_protection_needs());
-    /* GC_enable_incremental(); */
+    GC_set_warn_proc(warn_proc);
+    GC_set_stop_func(gc_stop);
     
     if (!sanitycheck()) {
         return EX_OSERR;

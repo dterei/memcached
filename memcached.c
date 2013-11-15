@@ -3398,39 +3398,7 @@ static void process_command(conn *c, char *command) {
 
     } else if (ntokens > 1 && strcmp(tokens[COMMAND_TOKEN].value, "slabs") == 0) {
         if (ntokens == 5 && strcmp(tokens[COMMAND_TOKEN + 1].value, "reassign") == 0) {
-            int src, dst, rv;
-
-            if (settings.slab_reassign == false) {
-                out_string(c, "CLIENT_ERROR slab reassignment disabled");
-                return;
-            }
-
-            src = strtol(tokens[2].value, NULL, 10);
-            dst = strtol(tokens[3].value, NULL, 10);
-
-            if (errno == ERANGE) {
-                out_string(c, "CLIENT_ERROR bad command line format");
-                return;
-            }
-
-            rv = slabs_reassign(src, dst);
-            switch (rv) {
-            case REASSIGN_OK:
-                out_string(c, "OK");
-                break;
-            case REASSIGN_RUNNING:
-                out_string(c, "BUSY currently processing reassign request");
-                break;
-            case REASSIGN_BADCLASS:
-                out_string(c, "BADCLASS invalid src or dst class id");
-                break;
-            case REASSIGN_NOSPARE:
-                out_string(c, "NOSPARE source class has no spare pages");
-                break;
-            case REASSIGN_SRC_DST_SAME:
-                out_string(c, "SAME src and dst class are identical");
-                break;
-            }
+            out_string(c, "CLIENT_ERROR slab reassignment disabled");
             return;
         } else if (ntokens == 4 &&
             (strcmp(tokens[COMMAND_TOKEN + 1].value, "automove") == 0)) {
@@ -5299,11 +5267,6 @@ int main (int argc, char **argv) {
     thread_init(settings.num_threads, main_base);
 
     if (start_assoc_maintenance_thread() == -1) {
-        exit(EXIT_FAILURE);
-    }
-
-    if (settings.slab_reassign &&
-        start_slab_maintenance_thread() == -1) {
         exit(EXIT_FAILURE);
     }
 

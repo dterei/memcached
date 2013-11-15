@@ -15,7 +15,6 @@ void slabs_init(const size_t limit, const double factor, const bool prealloc);
  * Given object size, return id to use when allocating/freeing memory for object
  * 0 means error: can't store such a large object
  */
-
 unsigned int slabs_clsid(const size_t size);
 
 /** Allocate object of given length. 0 on error */ /*@null@*/
@@ -32,18 +31,5 @@ bool get_stats(const char *stat_type, int nkey, ADD_STAT add_stats, void *c);
 
 /** Fill buffer with stats */ /*@null@*/
 void slabs_stats(ADD_STAT add_stats, void *c);
-
-int start_slab_maintenance_thread(void);
-void stop_slab_maintenance_thread(void);
-
-enum reassign_result_type {
-    REASSIGN_OK=0, REASSIGN_RUNNING, REASSIGN_BADCLASS, REASSIGN_NOSPARE,
-    REASSIGN_SRC_DST_SAME
-};
-
-enum reassign_result_type slabs_reassign(int src, int dst);
-
-void slabs_rebalancer_pause(void);
-void slabs_rebalancer_resume(void);
 
 #endif
